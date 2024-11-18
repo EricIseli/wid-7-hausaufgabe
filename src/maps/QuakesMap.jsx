@@ -5,6 +5,7 @@ import L from "leaflet";
 import { MapContainer, TileLayer, GeoJSON, LayersControl } from "react-leaflet";
 import Header from "./Header";
 import { BASE_LAYERS } from "./baseLayers";
+import FilterControls from "./filter";
 
 const OUTER_BOUNDS = [
   [-80, -180],
@@ -17,7 +18,6 @@ function getMarkerRadius(magnitude) {
   const baseArea = 10;
   const scaleFactor = 2.5;
   const area = baseArea * Math.pow(10, (magnitude - 1) / scaleFactor);
-
   return Math.sqrt(area / Math.PI);
 }
 
@@ -29,7 +29,6 @@ const pointToLayer = ({ properties }, latlng) => {
 const onEachFeature = (feature, layer) => {
   if (feature.properties && feature.properties.place) {
     const popup = <Popup {...feature} />;
-
     layer.bindPopup(renderToString(popup));
   }
 };
@@ -77,16 +76,21 @@ function Map() {
   }
 
   useEffect(() => {
-    const url = `${BASE_URL}/${minMag}_${timespan}.geojson`;
+    const url = `${BASE_URL}${minMag}_${timespan}.geojson`;
+    console.log("Fetching data from:", url); // Debug-Ausgabe
     fetchQuakeData(url);
-  }, []);
-
-  // console.log(quakesJson);
+  }, [timespan, minMag]); // Abhängigkeiten für useEffect
 
   return (
     <>
       <CssBaseline />
       <Header />
+      <FilterControls
+        minMag={minMag}
+        setMinMag={setMinMag}
+        timespan={timespan}
+        setTimespan={setTimespan}
+      />
       <MapContainer
         style={{ height: "100vh" }}
         center={[0, 0]}
@@ -96,13 +100,16 @@ function Map() {
         maxBoundsViscosity={1}
       >
         <LayersControl position="topright">
-          {BASE_LAYERS.map(baseLayer => (
+          {BASE_LAYERS.map((baseLayer) => (
             <LayersControl.BaseLayer
               key={baseLayer.url}
               checked={baseLayer.checked}
               name={baseLayer.name}
             >
-              <TileLayer attribution={baseLayer.attribution} url={baseLayer.url} />
+              <TileLayer
+                attribution={baseLayer.attribution}
+                url={baseLayer.url}
+              />
             </LayersControl.BaseLayer>
           ))}
 
@@ -110,7 +117,7 @@ function Map() {
             <GeoJSON
               data={quakesJson}
               pointToLayer={pointToLayer}
-              key={quakesJson.length}
+              key={`${minMag}-${timespan}-${quakesJson.length}`} // Einzigartige key für Neu-Rendern
               onEachFeature={onEachFeature}
             />
           </LayersControl.Overlay>
